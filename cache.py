@@ -15,6 +15,27 @@ class cache:
         self.size=size
         self.container=container
         self.storage={}
+
+    def evict(self):
+        #cache is full. delet an entry
+        oldest=cache.cacheitem()
+        oldkey=None
+
+        for k,v in self.storage.items():
+            if v.age > oldest.age:
+                oldest = v
+                oldkey = k
+
+        if oldest.dirty:
+            self.container[oldkey]=oldest.item
+            self.storage.pop(oldkey)
+
+    def flush(self):
+        while len(self.storage):
+            self.evict()
+
+    def dirty(self,key):
+        self.storage[key].dirty=True
     
     def __getitem__(self,key):
         try:
@@ -24,22 +45,23 @@ class cache:
         for _,elem in self.storage.items():
             elem.age +=1
         if self.size == len(self.storage):
-            #cache is full. delet an entry
+            self.evict()
 
-            oldest=cache.cacheitem()
-            oldkey=None
-
-            for k,v in self.storage.items():
-                if v.age > oldest.age:
-                    oldest = v
-                    oldkey = k
-
-            if oldest.dirty:
-                self.container[oldkey]=oldest.item
-            self.storage.pop(oldkey)
         self.storage[key]=cache.cacheitem()
         self.storage[key].item=self.container[key]
+
         return self.storage[key].item
+
+    def __setitem__(self,key,value):
+        if key in self.storage:
+            self.storage[key].item=value
+            return
+        if self.size == len(self.storage):
+            self.evict()
+
+        self.storage[key]=cache.cacheitem()
+        self.storage[key].item=value
+        self.storage[key].dirty=True
 
     def __str__(self):
         out='cache:\n'
